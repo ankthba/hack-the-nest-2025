@@ -121,3 +121,7 @@ spline-viewer {
     gap: 0vw;
     padding: 0 0 10vw 0;
 }
+
+a {
+    text-decoration: none;
+}

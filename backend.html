@@ -1,102 +1,217 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>ALS Eye-Tracking Communicator</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <title>ALS/Eye-Tracking Communicator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
   <link rel="stylesheet" href="backend.css" />
-  <style>
-    /* Stabilized gaze cursor */
-    #gazeCursor {
-      position: fixed;
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: rgba(0, 200, 0, 0.9);
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-      z-index: 9999;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
-    }
-    .hidden { display: none !important; }
-
-    /* Make text buttons much larger for dwell-clicking */
-    button,
-    [role="button"] {
-      font-size: 1.6rem;
-      padding: 18px 24px;
-      min-height: 64px;
-      min-width: 64px;
-      border-radius: 16px;
-      line-height: 1.1;
-      touch-action: manipulation;
-    }
-
-    /* Keep toolbar controls compact */
-    .toolbar button {
-      font-size: 1rem;
-      padding: 8px 12px;
-      min-height: 36px;
-      min-width: 36px;
-      border-radius: 8px;
-    }
-
-    /* Calibration overlay */
-    #calibrationOverlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.35);
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-      z-index: 9998;
-    }
-    .calib-pt {
-      align-self: center;
-      justify-self: center;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #ffcc00;
-      border: 2px solid #ff8c00;
-      box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.25);
-      cursor: pointer;
-      transition: transform 80ms ease, background 120ms ease;
-    }
-    .calib-pt:active { transform: scale(0.9); }
-    .calib-pt.hit {
-      background: #4caf50;
-      border-color: #2e7d32;
-      box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.25);
-    }
-
-    /* Simple toolbar */
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin: 8px 0;
-      flex-wrap: wrap;
-    }
-  </style>
+  <!-- WebGazer for webcam-based gaze estimation -->
+  <script src="https://cdn.jsdelivr.net/npm/webgazer/dist/webgazer.min.js"></script>
+  <script defer src="backend.js"></script>
 </head>
 <body>
-  <h1>ALS Eye-Tracking Communicator</h1>
-  <video id="webgazerVideoFeed" width="320" height="240" autoplay muted></video>
-  <div id="phraseGrid"></div>
-  <div id="selectedWords"></div>
-  <button id="sendBtn">Compose with Gemini</button>
-  <div id="output"></div>
-  <button id="speakBtn">Speak (TTS)</button>
-  <div class="toolbar">
-    <button id="calibrateBtn">Recalibrate</button>
-    <button id="cameraToggleBtn" aria-pressed="true">Turn Camera Off</button>
-    <label><input type="checkbox" id="debugToggle"> Debug overlays</label>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <header class="app-header" role="banner">
+    <div class="header-left">
+      <h1 id="app-title">ALS/Eye-Tracking Communicator</h1>
+      <p id="app-subtitle">Select words or images with your eyes or keyboard. Compose, expand with AI, and speak.</p>
+    </div>
+    <div class="header-right">
+      <button id="btnSettings" class="btn icon" aria-label="Open settings" title="Settings">
+        <span aria-hidden="true">⚙️</span>
+      </button>
+      <button id="btnHelp" class="btn icon" aria-label="Open help and calibration" title="Help & Calibrate">
+        <span aria-hidden="true">❓</span>
+      </button>
+    </div>
+  </header>
+
+  <main id="main" class="layout" role="main">
+    <section class="compose" aria-labelledby="compose-heading">
+      <h2 id="compose-heading">Compose</h2>
+
+      <div class="compose-row">
+        <div class="chips" id="chipContainer" role="list" aria-label="Selected words"></div>
+      </div>
+
+      <div class="compose-row">
+        <label class="visually-hidden" for="messageInput">Message text</label>
+        <textarea id="messageInput" rows="2" placeholder="Message will appear here..." aria-live="polite" aria-label="Message text"></textarea>
+      </div>
+
+      <div class="compose-actions">
+        <button id="btnSmartCompose" class="btn primary" title="Use AI to expand into a natural sentence">Smart Compose (AI)</button>
+        <button id="btnSpeak" class="btn success" title="Speak the message aloud">Speak</button>
+        <button id="btnStopSpeak" class="btn" title="Stop speaking">Stop</button>
+        <button id="btnUndo" class="btn" title="Remove last word">Undo</button>
+        <button id="btnClear" class="btn" title="Clear the message">Clear</button>
+        <button id="btnCopy" class="btn" title="Copy message to clipboard">Copy</button>
+      </div>
+
+      <div id="aiSuggestions" class="ai-suggestions" aria-live="polite" aria-label="AI suggestions"></div>
+    </section>
+
+    <section class="grid-area" aria-labelledby="grid-heading">
+      <div class="grid-toolbar">
+        <h2 id="grid-heading">Vocabulary</h2>
+        <div class="toolbar-right">
+          <label class="toggle">
+            <input type="checkbox" id="toggleEye" />
+            <span>Eye Tracking</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="toggleScan" />
+            <span>Scanning</span>
+          </label>
+          <button id="btnShowCategories" class="btn" aria-expanded="false" aria-controls="categoryBar">Categories</button>
+        </div>
+      </div>
+
+      <nav id="categoryBar" class="category-bar" role="tablist" aria-label="Categories">
+        <!-- Filled by JS -->
+      </nav>
+
+      <div id="tileGrid" class="tile-grid" role="grid" aria-label="Selectable words and images">
+        <!-- Filled by JS -->
+      </div>
+    </section>
+
+    <aside class="sidebar" aria-labelledby="history-heading">
+      <h2 id="history-heading">History</h2>
+      <ul id="historyList" class="history" aria-live="polite" aria-label="Spoken message history">
+        <!-- Filled by JS -->
+      </ul>
+
+      <div class="quick-help">
+        <h3>Quick Controls</h3>
+        <ul>
+          <li>Space/Enter: Select focused tile</li>
+          <li>Arrow keys: Move focus</li>
+          <li>S: Speak • C: Clear • U: Undo</li>
+          <li>H: Help • G: Toggle Gaze</li>
+        </ul>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-describedby="settingsDesc" hidden>
+    <div class="modal-content">
+      <header class="modal-header">
+        <h2 id="settingsTitle">Settings</h2>
+        <button id="closeSettings" class="btn icon" aria-label="Close settings">✖</button>
+      </header>
+      <div id="settingsDesc" class="modal-body">
+        <fieldset>
+          <legend>Appearance</legend>
+          <label>
+            Font size
+            <input type="range" id="fontSize" min="90" max="160" step="5" />
+            <span id="fontSizeValue"></span>%
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="toggleContrast" />
+            <span>High contrast</span>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Eye Tracking</legend>
+          <label>
+            Dwell select time (ms)
+            <input type="range" id="dwellTime" min="500" max="2500" step="100" />
+            <span id="dwellTimeValue"></span> ms
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="toggleGazePointer" />
+            <span>Show gaze pointer</span>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="toggleShowPreviewVideo" />
+            <span>Show camera preview (debug)</span>
+          </label>
+          <button id="btnCalibrate" class="btn">Calibrate</button>
+        </fieldset>
+
+        <fieldset>
+          <legend>Scanning</legend>
+          <label>
+            Scan step (ms)
+            <input type="range" id="scanSpeed" min="500" max="3000" step="100" />
+            <span id="scanSpeedValue"></span> ms
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Speech</legend>
+          <label>
+            Voice
+            <select id="voiceSelect" aria-label="Select voice"></select>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="toggleAutoSpeak" />
+            <span>Speak automatically after Smart Compose</span>
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>AI (Gemini)</legend>
+          <label>
+            API Key (stored locally)
+            <input type="password" id="geminiKey" placeholder="Enter Gemini API Key" autocomplete="off" />
+          </label>
+          <small>Uses Gemini 1.5 Flash via client-side API. Key is saved to this browser only.</small>
+        </fieldset>
+      </div>
+      <footer class="modal-footer">
+        <button id="saveSettings" class="btn primary">Save</button>
+        <button id="cancelSettings" class="btn">Cancel</button>
+      </footer>
+    </div>
   </div>
 
-  <div id="calibrationOverlay" class="hidden" aria-hidden="true"></div>
-  <div id="gazeCursor" aria-hidden="true" class="hidden"></div>
-  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
-  <script src="backend.js"></script>
+  <!-- Help / Calibration Modal -->
+  <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" aria-describedby="helpDesc" hidden>
+    <div class="modal-content wide">
+      <header class="modal-header">
+        <h2 id="helpTitle">Help & Calibration</h2>
+        <button id="closeHelp" class="btn icon" aria-label="Close help">✖</button>
+      </header>
+      <div id="helpDesc" class="modal-body">
+        <section>
+          <h3>How to use</h3>
+          <ol>
+            <li>Turn on Eye Tracking in the toolbar, then grant camera permission.</li>
+            <li>Open Calibration and click each dot a few times while looking at it.</li>
+            <li>Look at a tile to select it. Holding your gaze will select it automatically.</li>
+            <li>Use Smart Compose to turn selected words into a natural sentence and Speak.</li>
+            <li>Accessibility: full keyboard support and scanning mode if you prefer.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h3>Calibration</h3>
+          <p>Look at each dot and click it 3 times. This improves accuracy. You can repeat anytime.</p>
+          <div id="calibrationArea" class="calibration-area" aria-label="Calibration area">
+            <!-- Dots injected by JS -->
+          </div>
+          <div class="calib-controls">
+            <button id="resetCalibration" class="btn">Reset</button>
+          </div>
+        </section>
+      </div>
+      <footer class="modal-footer">
+        <button id="doneHelp" class="btn primary">Done</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Gaze pointer -->
+  <div id="gazePointer" aria-hidden="true"></div>
+
+  <!-- Live region for status -->
+  <div id="statusLive" class="visually-hidden" aria-live="polite"></div>
 </body>
 </html>
