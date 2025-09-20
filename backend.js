@@ -217,11 +217,11 @@ const phrases = [
     cursorEl.style.pointerEvents = 'none';
     cursorEl.style.willChange = 'transform';
     stab = new GazeStabilizer(cursorEl, {
-      medianWindow: 7,
-      deadzone: 18,
-      lerp: 0.12,
-      maxStep: 40,
-      euro: { minCutoff: 0.5, beta: 0.02, dCutoff: 1.2 }
+      medianWindow: 9,      // was 7
+      deadzone: 22,         // was 18
+      lerp: 0.08,           // was 0.12
+      maxStep: 30,          // was 40
+      euro: { minCutoff: 0.7, beta: 0.03, dCutoff: 1.4 } // stronger smoothing
     });
     window.ingestGaze = (x, y, t) => stab.ingest(x, y, t ?? performance.now());
   }
@@ -233,7 +233,7 @@ const phrases = [
     } catch {}
     window.webgazer.setGazeListener((data, ts) => {
       if (!data || Number.isNaN(data.x) || Number.isNaN(data.y)) return;
-      if (typeof data.confidence === 'number' && data.confidence < 0.35) return; // gate noisy points
+      if (typeof data.confidence === 'number' && data.confidence < 0.45) return; // was 0.35 // gate noisy points
       // drop sub-pixel noise early
       if (stab.drawX != null && Math.hypot(data.x - stab.drawX, data.y - stab.drawY) < 0.4) return;
       stab.ingest(data.x, data.y, ts || performance.now());
@@ -248,5 +248,256 @@ const phrases = [
   updateCameraBtn();
   if (debugToggle) debugToggle.onchange = () => { state.debug = !!debugToggle.checked; };
 
+  // Build and run a click-based calibration (WebGazer learns from clicks)
+  function buildCalibrationOverlay(overlay, hitsPerPoint = 5) {
+    if (!overlay) return;
+    overlay.innerHTML = '';
+    overlay.classList.remove('hidden');
+
+    // Ensure click listeners are active so WebGazer records training points
+    try { window.webgazer?.addMouseEventListeners?.(); } catch {}
+
+    const coords = [
+      [0.10, 0.10], [0.50, 0.10], [0.90, 0.10],
+      [0.10, 0.50], [0.50, 0.50], [0.90, 0.50],
+      [0.10, 0.90], [0.50, 0.90], [0.90, 0.90],
+    ];
+    const needed = coords.length * hitsPerPoint;
+    let total = 0;
+
+    coords.forEach(([nx, ny]) => {
+      const pt = document.createElement('div');
+      pt.className = 'calib-pt';
+      pt.style.position = 'absolute';
+      pt.style.left = `${nx * 100}%`;
+      pt.style.top = `${ny * 100}%`;
+      pt.style.transform = 'translate(-50%, -50%)';
+
+      let count = 0;
+      pt.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Visual feedback
+        pt.classList.add('hit');
+        setTimeout(() => pt.classList.remove('hit'), 120);
+
+        count += 1;
+        total += 1;
+
+        if (count >= hitsPerPoint) {
+          pt.style.pointerEvents = 'none';
+          pt.style.opacity = '0.35';
+        }
+
+        // Done: hide overlay and nudge WebGazer to retrain/apply
+        if (total >= needed) {
+          overlay.classList.add('hidden');
+          try {
+            // Brief pause/resume to ensure model picks up latest samples
+            window.webgazer?.pause?.();
+            setTimeout(() => window.webgazer?.resume?.(), 120);
+          } catch {}
+        }
+      });
+
+      overlay.appendChild(pt);
+    });
+  }
+
+  // Public entry used by backend.html inline script
+  window.initCalibration = function initCalibration(opts = {}) {
+    // Optionally clear old data if requested by caller
+    if (opts.reset) {
+      try { window.webgazer?.clearData?.(); } catch {}
+    }
+    // Show overlay and start collecting calibration clicks
+    if (overlayEl) {
+      // Use 5 hits per point by default; override via opts.hits
+      buildCalibrationOverlay(overlayEl, Math.max(3, opts.hits || 5));
+    }
+  };
+
+  // Wire the toolbar button in case the inline script isn’t used
+  if (calibrateBtn) {
+    calibrateBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Clear old model and recalibrate fresh
+      try { window.webgazer?.clearData?.(); } catch {}
+      window.initCalibration({ reset: false, hits: 5 });
+    });
+  }
+
   // ...existing code...
+
+  // Grab controls
+  const gazeCursorEl = document.getElementById('gazeCursor');
+  const calibrationOverlayEl = document.getElementById('calibrationOverlay');
+  const cameraToggleBtn = document.getElementById('cameraToggleBtn');
+
+  // Ensure gaze cursor starts hidden
+  gazeCursorEl?.classList.add('hidden');
+
+  // Remove any existing mousemove-driven cursor logic (if present). Make sure any code like:
+  // window.addEventListener('mousemove', someHandlerThatMovesGazeCursor);
+  // is deleted or disabled.
+
+  // Smoothing for gaze updates
+  let smoothed = { x: null, y: null };
+  const alpha = 0.35; // 0..1, higher = snappier
+
+  function setGazeCursor(x, y) {
+    if (!gazeCursorEl) return;
+    if (x == null || y == null) {
+      gazeCursorEl.classList.add('hidden');
+      return;
+    }
+    if (smoothed.x == null) {
+      smoothed.x = x; smoothed.y = y;
+    } else {
+      smoothed.x += (x - smoothed.x) * alpha;
+      smoothed.y += (y - smoothed.y) * alpha;
+    }
+    gazeCursorEl.style.left = `${smoothed.x}px`;
+    gazeCursorEl.style.top = `${smoothed.y}px`;
+    gazeCursorEl.classList.remove('hidden');
+  }
+
+  function hideGazeCursor() {
+    gazeCursorEl?.classList.add('hidden');
+    smoothed.x = smoothed.y = null;
+  }
+
+  // Start WebGazer and subscribe to predictions
+  async function startWebGazer() {
+    if (!window.webgazer) return;
+
+    // Hide built-in visuals
+    try {
+      webgazer.showVideoPreview?.(false);
+      webgazer.showVideo?.(false);
+      webgazer.showFaceOverlay?.(false);
+      webgazer.showFaceFeedbackBox?.(false);
+      webgazer.showPredictionPoints?.(false);
+      webgazer.showGazeDot?.(false);
+    } catch {}
+
+    webgazer
+      .setRegression?.('ridge')
+      ?.setTracker?.('clmtrackr')
+      ?.setGazeListener((data) => {
+        if (!data || typeof data.x !== 'number' || typeof data.y !== 'number') {
+          setGazeCursor(null, null);
+          return;
+        }
+        setGazeCursor(data.x, data.y);
+      });
+
+    await webgazer.begin();
+  }
+
+  async function stopWebGazer() {
+    try { await webgazer?.pause?.(); } catch {}
+    hideGazeCursor();
+  }
+
+  // Build and run a click-based calibration grid
+  function buildCalibrationOverlay(overlay, hitsPerPoint = 5) {
+    if (!overlay) return;
+    overlay.innerHTML = '';
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    // Ensure WebGazer records click samples
+    try { window.webgazer?.addMouseEventListeners?.(); } catch {}
+
+    const cells = [
+      [0.10, 0.10], [0.50, 0.10], [0.90, 0.10],
+      [0.10, 0.50], [0.50, 0.50], [0.90, 0.50],
+      [0.10, 0.90], [0.50, 0.90], [0.90, 0.90],
+    ];
+    const needed = cells.length * hitsPerPoint;
+    let total = 0;
+
+    cells.forEach(([nx, ny]) => {
+      const pt = document.createElement('div');
+      pt.className = 'calib-pt';
+      pt.style.position = 'absolute';
+      pt.style.left = `${nx * 100}%`;
+      pt.style.top = `${ny * 100}%`;
+      pt.style.transform = 'translate(-50%, -50%)';
+
+      let count = 0;
+      pt.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        pt.classList.add('hit');
+        setTimeout(() => pt.classList.remove('hit'), 100);
+
+        count += 1;
+        total += 1;
+
+        if (count >= hitsPerPoint) {
+          pt.style.pointerEvents = 'none';
+          pt.style.opacity = '0.35';
+        }
+
+        if (total >= needed) {
+          // Done: close overlay and nudge WebGazer to use the new model
+          overlay.classList.add('hidden');
+          overlay.setAttribute('aria-hidden', 'true');
+          try {
+            webgazer.pause?.();
+            setTimeout(() => webgazer.resume?.(), 150);
+          } catch {}
+        }
+      });
+
+      overlay.appendChild(pt);
+    });
+
+    // Clicking outside a point shouldn’t close it
+    overlay.addEventListener('click', (e) => e.stopPropagation(), { once: false });
+  }
+
+  // Public calibration entry
+  window.initCalibration = function initCalibration(opts = {}) {
+    if (opts.reset) {
+      try { window.webgazer?.clearData?.(); } catch {}
+    }
+    if (calibrationOverlayEl) {
+      buildCalibrationOverlay(calibrationOverlayEl, Math.max(3, opts.hits || 5));
+    }
+  };
+
+  // Hook toolbar buttons
+  calibrateBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    try { window.webgazer?.clearData?.(); } catch {}
+    window.initCalibration({ reset: false, hits: 5 });
+  });
+
+  cameraToggleBtn?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const isOn = btn.getAttribute('aria-pressed') !== 'false';
+    if (isOn) {
+      btn.setAttribute('aria-pressed', 'false');
+      btn.textContent = 'Turn Camera On';
+      await stopWebGazer();
+    } else {
+      btn.setAttribute('aria-pressed', 'true');
+      btn.textContent = 'Turn Camera Off';
+      await startWebGazer();
+    }
+  });
+
+  // Optional: hide gaze cursor when debug overlay is off (does not use mouse)
+  debugToggle?.addEventListener('change', () => {
+    // Ensure no mouse fallback is used anywhere; leave empty on purpose
+  });
+
+  // Boot
+  startWebGazer().catch(console.error);
+
 })();
