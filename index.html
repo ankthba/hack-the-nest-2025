@@ -4,18 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ASL Interpreter</title>
+    <link rel="icon" type="image/x-icon" href="logo.png">
     <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+
 </head>
 <body>
     <header>
         <div class="header">
-            
+            <img class="logo" src="logo.png" alt="Logo">
+            <h1 class="headerText sanslight">ASL Interpreter</h1>
         </div>
-
+        <script class="threedee" type="module" src="https://unpkg.com/@splinetool/viewer@1.10.64/build/spline-viewer.js"></script>
+        <spline-viewer url="https://prod.spline.design/s4kYeqEFHnBg9URR/scene.splinecode"></spline-viewer>
     </header>
 
+    <h2 class="sanslight info" id="reveal-h2" style="opacity:0; transition: opacity 2s;">
+        What is ALS?
+    </h2>
+    <p class="info2 sanslight" id="reveal-p" style="opacity:0; transition: opacity 4s;">
+        Amyotrophic Lateral Sclerosis is a progressive disease that damages nerve cells in the brain and spinal cord, leading to 
+        muscle weakness and loss of motor control. As the nerves die, muscles can no longer function, affecting movement, speaking, 
+        swallowing, and breathing. There’s no cure, and the cause is often unknown.
+    </p>
 
-
+    <div class="probsol" id="reveal-title" style="opacity:0; transition: opacity 2s;">
+        <h2 class="sanslight problemtitle">
+            Problem
+        </h2>
+        <h2 class="sanslight problemtitle">
+            Solution
+        </h2>
+    </div>
+    <div class="probsol2" id="reveal-text" style="opacity:0; transition: opacity 2s;">
+        <p class="problemtext sanslight">
+            People with ALS often lose their ability to speak and communicate effectively. This can lead to social isolation, 
+            frustration, and a decreased quality of life. Many existing communication aids are expensive, complex, or not user-friendly.
+        </p>
+        <p class="solutiontext sanslight">
+            We are developing an affordable and user-friendly ALS interpreter that uses Artificial Intelligence to translate sign 
+            language into spoken words in real-time. This device aims to enhance communication for individuals with ALS, helping
+            them communicate more easily with just their eyes.
+        </p>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>

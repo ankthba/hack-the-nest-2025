@@ -4,12 +4,120 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    background-image: "backgroundHacktheNest.jpg";
+}
+
+.logo {
+    width: 3vw;
+    height: auto;
+}
+
+.sanslight {
+  font-family: "DM Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 200;
+  font-style: normal;
+  height: 50%;
+}
+
+.sansheavy {
+  font-family: "DM Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+  height: 50%;
 }
 
 body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
+    background-image: url("bghackthenest.jpg");
+    overflow-x: hidden;
+    background-size: 100vw;     
 }
 
-/* Add your styles here */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    letter-spacing: 0.20vw;
+}
+
+.headerText {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 2vw;
+    margin-left: 20px;
+}
+
+spline-viewer {
+    width: 75vw;
+    height: 72vh;
+    display: block;
+    margin: 0 auto;
+    position: center;
+}
+
+.threedee {
+    width: 100vw;
+    position: center;
+}
+
+.info {
+    color: rgb(255, 255, 255);
+    text-align: center;
+    font-size: 8vw;
+    padding: 13vw 0 2.5vw 0;
+}
+
+.info2 {
+    color: rgb(255, 255, 255);
+    text-align: center;
+    font-size: 2vw;
+    padding: 0 10vw 13vw 10vw;
+}
+
+.probsol {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 29vw;
+}
+
+.problemtitle {
+    text-align: center;
+    color: white;
+    font-size: 5vw;
+}
+
+.solutiontitle {
+    text-align: center;
+    color: white;
+    font-size: 5vw;
+
+}
+
+.problemtext {
+    text-align: center;
+    font-size: 1.5vw;
+    padding: 0 5vw 0 5vw;
+    color: white;
+    width: 45vw;
+}
+
+.solutiontext {
+    text-align: center;
+    font-size: 1.5vw;
+    padding: 0 2.5vw 0 2.5vw;
+    color: white;
+    width: 45vw;
+}
+
+.probsol2 {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 0vw;
+    padding: 0 0 10vw 0;
+}
