@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ALS Eye-Tracking Communicator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="backend.css" />
+  <style>
+    /* Stabilized gaze cursor */
+    #gazeCursor {
+      position: fixed;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: rgba(0, 200, 0, 0.9);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 9999;
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.35);
+    }
+    .hidden { display: none !important; }
+
+    /* Make text buttons much larger for dwell-clicking */
+    button,
+    [role="button"] {
+      font-size: 1.6rem;
+      padding: 18px 24px;
+      min-height: 64px;
+      min-width: 64px;
+      border-radius: 16px;
+      line-height: 1.1;
+      touch-action: manipulation;
+    }
+
+    /* Keep toolbar controls compact */
+    .toolbar button {
+      font-size: 1rem;
+      padding: 8px 12px;
+      min-height: 36px;
+      min-width: 36px;
+      border-radius: 8px;
+    }
+
+    /* Calibration overlay */
+    #calibrationOverlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.35);
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      z-index: 9998;
+    }
+    .calib-pt {
+      align-self: center;
+      justify-self: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffcc00;
+      border: 2px solid #ff8c00;
+      box-shadow: 0 0 0 4px rgba(255, 140, 0, 0.25);
+      cursor: pointer;
+      transition: transform 80ms ease, background 120ms ease;
+    }
+    .calib-pt:active { transform: scale(0.9); }
+    .calib-pt.hit {
+      background: #4caf50;
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 4px rgba(76, 175, 80, 0.25);
+    }
+
+    /* Simple toolbar */
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin: 8px 0;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>ALS Eye-Tracking Communicator</h1>
+  <video id="webgazerVideoFeed" width="320" height="240" autoplay muted></video>
+  <div id="phraseGrid"></div>
+  <div id="selectedWords"></div>
+  <button id="sendBtn">Compose with Gemini</button>
+  <div id="output"></div>
+  <button id="speakBtn">Speak (TTS)</button>
+  <div class="toolbar">
+    <button id="calibrateBtn">Recalibrate</button>
+    <button id="cameraToggleBtn" aria-pressed="true">Turn Camera Off</button>
+    <label><input type="checkbox" id="debugToggle"> Debug overlays</label>
+  </div>
+
+  <div id="calibrationOverlay" class="hidden" aria-hidden="true"></div>
+  <div id="gazeCursor" aria-hidden="true" class="hidden"></div>
+  <script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+  <script src="backend.js"></script>
+</body>
+</html>
