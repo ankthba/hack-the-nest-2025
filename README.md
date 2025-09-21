@@ -100,6 +100,6 @@ Open `index.html` in your browser and grant camera access when prompted.
 ## Contributors
 
 - Aniketh Bandlamudi, Backend
-- Lauren Kim, Front End
+- Lauren Kim, Frontend
 - Celine Liu, Logo
 ---
