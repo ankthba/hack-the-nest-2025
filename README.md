@@ -1,3 +1,5 @@
+![IllumiSign Banner](https://drive.google.com/uc?export=view&id=1Ar3DopmSy2SAy2cisr0BN7FidUuOlUZn)
+
 # IllumiSign
 
 IllumiSign is an open-source, browser-based communication system built for people with ALS (Amyotrophic Lateral Sclerosis) and others with severe speech or mobility impairments. Using only a standard webcam and a web browser, IllumiSign empowers users to express themselves through **eye tracking, scanning controls, with no expensive hardware required.
