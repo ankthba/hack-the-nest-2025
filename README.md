@@ -69,13 +69,12 @@ For many people with ALS, communication becomes nearly impossible once both spee
 
 ### Requirements
 
-- Modern browser (Chrome, Edge, or Firefox recommended)
+- Modern browser (Chromium Based, or Firefox recommended)
 - Webcam access
 
 ### Run Locally
 
 git clone https://github.com/ankthba/hack-the-nest-2025.git
-cd hack-the-nest-2025
 
 Open `index.html` in your browser and grant camera access when prompted.
 
